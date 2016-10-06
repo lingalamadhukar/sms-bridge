@@ -29,9 +29,9 @@
   	</servlet-mapping>
   	
   	<!-- Define roles --> 
-	<security-role> 
+	<!--  <security-role> 
 		<role-name>mifos</role-name> 
-    </security-role> 
+    </security-role> --> 
   
 	<!-- Define a constraint to restrict access to all resources (/*) --> 
   	<security-constraint>
@@ -46,16 +46,19 @@
 			<http-method>GET</http-method>
 			<http-method>POST</http-method>
 		</web-resource-collection>
+		<!--
 		<auth-constraint>
 			<role-name>mifos</role-name>
 		</auth-constraint>
 		<user-data-constraint>
 			<transport-guarantee>NONE</transport-guarantee>
 		</user-data-constraint>
+		--> 
+		
 	</security-constraint>
 
 	<!-- This application uses BASIC authentication -->
-	<login-config>
+<!--	<login-config>
 		<auth-method>BASIC</auth-method>
-	</login-config>
+	</login-config> --> 
 </web-app>
