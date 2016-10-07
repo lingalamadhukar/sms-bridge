@@ -23,7 +23,7 @@ buildscript {
 }
 
 dependencies {
-	def springVersion = '3.2.5.RELEASE'
+	def springVersion = '4.0.7.RELEASE'
 	def jerseyVersion = '1.17'
 	def tomcatVersion = '7.0.47'
 	def slf4jVersion = '1.7.5'
