@@ -281,7 +281,14 @@ public class SmsGatewayHelper {
         // ignore any IDE warnings
         return new GeneralDataCoding(Alphabet.ALPHA_DEFAULT, MessageClass.CLASS1, false);
     }
-    
+
+
+    public final DataCoding dataUnicodeCoding() {
+        // ignore any IDE warnings
+        return new GeneralDataCoding(Alphabet.ALPHA_UCS2, MessageClass.CLASS1, false);
+    }
+
+
     /** 
      * @return default short message to send, by providing an index into the table of Predefined Messages set up by the SMSC administrator.
      **/
@@ -334,26 +341,37 @@ public class SmsGatewayHelper {
      **/
     public SmsGatewayMessage submitShortMessage(SmsGatewayMessage smsGatewayMessage) {
         String message = smsGatewayMessage.getMessage();
-        
-        if (message != null && message.length() > StringParameter.SHORT_MESSAGE.getMax()) {
-            smsGatewayMessage = this.submitSegmentedShortMessages(smsGatewayMessage);
-        }
-        
-        else if (message != null) {
-            // create a new SmsShortMessage object
+
+        Alphabet alphabet = null;
+        int maximumSingleMessageSize = 0;
+        byte[] originalMessageBytes = null;
+        ESMClass esmClass = this.esmClass();
+
+        DataCoding dataCoding = null;
+        try {
+            if (Gsm0338.isBasicEncodeable(message)) {
+                originalMessageBytes = message.getBytes();
+                dataCoding = this.dataCoding();
+            } else {
+                originalMessageBytes = message.getBytes("UTF-16BE");
+                dataCoding = this.dataUnicodeCoding();
+            }
+
             final SmsShortMessage smsShortMessage = SmsShortMessage.newSmsShortMessage(
-                    smsGatewayMessage.getId(), this.serviceType(), this.sourceAddrTon(), 
-                    this.sourceAddrNpi(), smsGatewayMessage.getSourceAddress(), this.destAddrTon(), 
-                    this.destAddrNpi(), smsGatewayMessage.getMobileNumber(), 
-                    this.esmClass(), this.protocolId(), this.priorityFlag(), 
-                    this.scheduledDeliveryTime(), this.validityPeriod(), 
-                    this.registeredDelivery(), this.replaceIfPresentFlag(), this.dataCoding(), 
-                    this.smDefaultMsgId(), message.getBytes(), 1, 1);
-            
+                    smsGatewayMessage.getId(), this.serviceType(), this.sourceAddrTon(),
+                    this.sourceAddrNpi(), smsGatewayMessage.getSourceAddress(), this.destAddrTon(),
+                    this.destAddrNpi(), smsGatewayMessage.getMobileNumber(),
+                    esmClass, this.protocolId(), this.priorityFlag(),
+                    this.scheduledDeliveryTime(), this.validityPeriod(),
+                    this.registeredDelivery(), this.replaceIfPresentFlag(), dataCoding,
+                    this.smDefaultMsgId(), originalMessageBytes, 1, 1);
+
             // send short message to SMSC (short message service center)
             smsGatewayMessage = this.submitShortMessage(smsShortMessage);
+        } catch (IOException e) {
+            logger.error("IO error occur", e);
         }
-        
+
         return smsGatewayMessage;
     }
     
@@ -429,77 +447,73 @@ public class SmsGatewayHelper {
      **/
     public SmsGatewayMessage submitSegmentedShortMessages(SmsGatewayMessage smsGatewayMessage) {
         String message = smsGatewayMessage.getMessage();
-        
+
         Alphabet alphabet = null;
         int maximumSingleMessageSize = 0;
         byte[] originalMessageBytes = null;
-        
-        if (message != null && message.length() > StringParameter.SHORT_MESSAGE.getMax()) {
-            try {
-                if (Gsm0338.isEncodeableInGsm0338(message)) {
-                    originalMessageBytes = message.getBytes();
-                    alphabet = Alphabet.ALPHA_DEFAULT;
-                    maximumSingleMessageSize = MAX_SINGLE_MSG_SEGMENT_SIZE_7BIT;
-                } 
-                
-                else {
-                    originalMessageBytes = message.getBytes("UTF-16BE");
-                    alphabet = Alphabet.ALPHA_UCS2;
-                    maximumSingleMessageSize = MAX_SINGLE_MSG_SEGMENT_SIZE_UCS2;
-                }
 
-                // check if message needs splitting and set required sending parameters
-                byte[][] segmentedMessagesBytes = null;
-                ESMClass esmClass = null;
-                
-                if (message.length() > maximumSingleMessageSize) {
-                    byte[] referenceNumber = new byte[1];
-                    new Random().nextBytes(referenceNumber);
-                    
-                    segmentedMessagesBytes = createConcatenatedBinaryShortMessages(originalMessageBytes, 
-                            referenceNumber[0]);
-                    
-                    // set UDHI so PDU will decode the header
-                    esmClass = new ESMClass(MessageMode.DEFAULT, MessageType.DEFAULT, GSMSpecificFeature.UDHI);
-                } 
-                
-                else {
-                    segmentedMessagesBytes = new byte[][] { originalMessageBytes };
-                    esmClass = new ESMClass();
-                }
-                
-                // submit all messages
-                for (int i = 0; i < segmentedMessagesBytes.length; i++) {
-                    int segmentNumber = i + 1;
-                    
-                    // create a new SmsShortMessage object
-                    final SmsShortMessage smsShortMessage = SmsShortMessage.newSmsShortMessage(
-                            smsGatewayMessage.getId(), this.serviceType(), this.sourceAddrTon(), 
-                            this.sourceAddrNpi(), smsGatewayMessage.getSourceAddress(), this.destAddrTon(), 
-                            this.destAddrNpi(), smsGatewayMessage.getMobileNumber(), 
-                            esmClass, this.protocolId(), this.priorityFlag(), 
-                            this.scheduledDeliveryTime(), this.validityPeriod(), 
-                            this.registeredDelivery(), this.replaceIfPresentFlag(), 
-                            new GeneralDataCoding(alphabet, esmClass), this.smDefaultMsgId(), 
-                            segmentedMessagesBytes[i], segmentNumber, segmentedMessagesBytes.length);
-                    
-                    // send short message to SMSC (short message service center)
-                    smsGatewayMessage = this.submitShortMessage(smsShortMessage);
-                }
+        DataCoding dataCoding = null;
+        try {
+            if (Gsm0338.isBasicEncodeable(message)) {
+                originalMessageBytes = message.getBytes();
+                alphabet = Alphabet.ALPHA_DEFAULT;
+                maximumSingleMessageSize = MAX_SINGLE_MSG_SEGMENT_SIZE_7BIT;
+                dataCoding = this.dataCoding();
             }
-            
-            catch (IOException e) {
-                logger.error("IO error occur", e);
+            else {
+                originalMessageBytes = message.getBytes("UTF-16BE");
+                alphabet = Alphabet.ALPHA_UCS2;
+                maximumSingleMessageSize = MAX_SINGLE_MSG_SEGMENT_SIZE_UCS2;
+                dataCoding = this.dataUnicodeCoding();
+            }
+
+            // check if message needs splitting and set required sending parameters
+            byte[][] segmentedMessagesBytes = null;
+            ESMClass esmClass = this.esmClass();
+
+            if (message.length() > maximumSingleMessageSize) {
+                byte[] referenceNumber = new byte[1];
+                new Random().nextBytes(referenceNumber);
+
+                segmentedMessagesBytes = createConcatenatedBinaryShortMessages(originalMessageBytes,
+                        referenceNumber[0]);
+
+            }
+
+            else {
+                segmentedMessagesBytes = new byte[][] { originalMessageBytes };
+            }
+
+            // submit all messages
+            for (int i = 0; i < segmentedMessagesBytes.length; i++) {
+                int segmentNumber = i + 1;
+
+                // create a new SmsShortMessage object
+                final SmsShortMessage smsShortMessage = SmsShortMessage.newSmsShortMessage(
+                        smsGatewayMessage.getId(), this.serviceType(), this.sourceAddrTon(),
+                        this.sourceAddrNpi(), smsGatewayMessage.getSourceAddress(), this.destAddrTon(),
+                        this.destAddrNpi(), smsGatewayMessage.getMobileNumber(),
+                        esmClass, this.protocolId(), this.priorityFlag(),
+                        this.scheduledDeliveryTime(), this.validityPeriod(),
+                        this.registeredDelivery(), this.replaceIfPresentFlag(),
+                        dataCoding, this.smDefaultMsgId(),
+                        segmentedMessagesBytes[i], segmentNumber, segmentedMessagesBytes.length);
+
+                // send short message to SMSC (short message service center)
+                smsGatewayMessage = this.submitShortMessage(smsShortMessage);
             }
         }
-        
+
+        catch (IOException e) {
+            logger.error("IO error occur", e);
+        }
+
         return smsGatewayMessage;
     }
     
     /**
      * Reconnect session after specified interval.
      * 
-     * @param timeInMillis is the interval.
      * @return None
      */
     public void reconnectAndBindSession() {
@@ -533,7 +547,7 @@ public class SmsGatewayHelper {
                         
                         catch (InterruptedException ee) {}
                     }
-                    
+
                     isReconnecting = false;
                 }
             }.start();
