@@ -8,7 +8,7 @@
 -->
 <Context>
 	<Resource type="javax.sql.DataSource" name="jdbc/mifos-sms-gateway"
-		driverClassName="com.mysql.jdbc.Driver" url="jdbc:mysql://localhost:3306/mifos-sms-gateway"
+		driverClassName="com.mysql.jdbc.Driver" url="jdbc:mysql://localhost:3306/mifosplatform-tenants"
 		username="root" password="mysql" validationQuery="select 1" maxActive="10"
 		maxIdle="4" />
 </Context>

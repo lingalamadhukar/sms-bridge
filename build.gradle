@@ -63,6 +63,7 @@ dependencies {
     compile "com.google.code.gson:gson:2.2.4"
     compile "com.googlecode.jsmpp:jsmpp:2.1.0"
     compile "joda-time:joda-time:2.7"
+    compile "com.infobip:infobip-api-java-client:1.1.0"
 }
 
 tomcatRunWar {
@@ -74,4 +75,8 @@ tomcatRunWar {
     keystoreFile = file('keystore.jks')
     keystorePass = 'openmf'
     configFile = file('src/test/resources/META-INF/context.xml')
+}
+
+tasks.withType(JavaCompile) {
+  options.encoding = "utf-8" // adapt as necessary
 }

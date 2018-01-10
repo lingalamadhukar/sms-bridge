@@ -32,6 +32,11 @@ public class SmsGatewayMessage {
     private String message;
     
     /** 
+     * the delivery status of the message, will be set after message sent
+     **/
+    private Integer deliveryStatus; 
+    
+    /** 
      * SmsGatewayMessage constructor
      * 
      * @param id the internal message identifier
@@ -90,4 +95,16 @@ public class SmsGatewayMessage {
 	public String getSourceAddress() {
 		return sourceAddress;
 	}
+
+    public void setExternalId(final String externalId) {
+        this.externalId = externalId;
+    }
+
+    public void setDeliveryStatus(final Integer deliveryStatus) {
+        this.deliveryStatus = deliveryStatus;
+    }
+
+    public Integer getDeliveryStatus() {
+        return this.deliveryStatus;
+    }
 }

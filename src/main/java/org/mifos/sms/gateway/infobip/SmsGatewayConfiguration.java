@@ -14,6 +14,7 @@ public class SmsGatewayConfiguration {
 	private Integer portNumber;
 	private String password;
 	private Boolean enableOutboundMessageScheduler;
+	private String callBackURL;
 	
 	public static final String DEVELOPMENT_MODE = "DEVELOPMENT_MODE";
 	public static final String SMS_GATEWAY_SYSTEM_ID = "SMS_GATEWAY_SYSTEM_ID";
@@ -21,6 +22,7 @@ public class SmsGatewayConfiguration {
 	public static final String SMS_GATEWAY_PORT = "SMS_GATEWAY_PORT";
 	public static final String SMS_GATEWAY_PASSWORD = "SMS_GATEWAY_PASSWORD";
 	public static final String ENABLE_OUTBOUND_MESSSAGE_SCHEDULER = "ENABLE_OUTBOUND_MESSSAGE_SCHEDULER";
+	public static final String SMS_GATEWAY_CALLBACK_URL = "SMS_GATEWAY_CALLBACK_URL";
 	
 	/** 
 	 * SmsGatewayConfiguration constructor
@@ -56,6 +58,8 @@ public class SmsGatewayConfiguration {
     		        case ENABLE_OUTBOUND_MESSSAGE_SCHEDULER:
     		            this.enableOutboundMessageScheduler = Boolean.valueOf(configurationData.getValue());
     		            break;
+    		        case SMS_GATEWAY_CALLBACK_URL:
+    		            this.callBackURL = configurationData.getValue();
     		    }
 		    }
 		}
@@ -101,5 +105,9 @@ public class SmsGatewayConfiguration {
 	 **/
 	public Boolean getEnableOutboundMessageScheduler() {
 		return enableOutboundMessageScheduler;
+	}
+	
+	public String getCallBackURL() {
+	    return this.callBackURL;
 	}
 }
