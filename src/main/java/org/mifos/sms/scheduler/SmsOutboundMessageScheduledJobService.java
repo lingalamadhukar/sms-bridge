@@ -11,4 +11,6 @@ public interface SmsOutboundMessageScheduledJobService {
 	 * sends a batch of outbound SMS messages to the SMS gateway 
 	 **/
 	public void sendMessages();
+
+	public void updateDeliveryStatus();
 }
