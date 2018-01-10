@@ -22,6 +22,7 @@ import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Set;
 
 import org.mifos.sms.data.ConfigurationData;
 import org.mifos.sms.service.ReadConfigurationService;
@@ -29,14 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
-import infobip.api.client.GetSentSmsDeliveryReports;
+import infobip.api.client.GetSentSmsLogs;
 import infobip.api.client.SendMultipleTextualSmsAdvanced;
 import infobip.api.config.BasicAuthConfiguration;
 import infobip.api.model.Destination;
-import infobip.api.model.sms.mt.reports.SMSReport;
-import infobip.api.model.sms.mt.reports.SMSReportResponse;
+import infobip.api.model.sms.mt.logs.SMSLogsResponse;
 import infobip.api.model.sms.mt.send.Message;
 import infobip.api.model.sms.mt.send.SMSResponse;
 import infobip.api.model.sms.mt.send.SMSResponseDetails;
@@ -48,7 +47,7 @@ public class InfoBipMessageProvider {
     private static final Logger logger = LoggerFactory.getLogger(InfoBipMessageProvider.class);
 
     private final HashMap<String, SendMultipleTextualSmsAdvanced> sendSMSCliets = new HashMap<>();
-    private final HashMap<String, GetSentSmsDeliveryReports> receiveSMSClients = new HashMap<>();
+    private final HashMap<String, GetSentSmsLogs> receiveSMSClients = new HashMap<>();
     private final String callBackUrl;
 
     private final ReadConfigurationService readConfigurationService;
@@ -85,20 +84,16 @@ public class InfoBipMessageProvider {
         final SMSResponseDetails sentMessageInfo = response.getMessages().get(0);
         message.setExternalId(sentMessageInfo.getMessageId());
         message.setDeliveryStatus(InfoBipStatus.smsStatus(sentMessageInfo.getStatus().getGroupId()).getValue());
-        logger.debug("InfoBipMessageProvider.sendMessage():" + InfoBipStatus.smsStatus(sentMessageInfo.getStatus().getGroupId()).getValue());
+        logger.debug(
+                "InfoBipMessageProvider.sendMessage():" + InfoBipStatus.smsStatus(sentMessageInfo.getStatus().getGroupId()).getValue());
         return message;
     }
 
-    public SmsGatewayMessage getDeliveryReport(final SmsGatewayMessage message) {
-        // Based on message id, we get notification from Infobip about message status
-        final GetSentSmsDeliveryReports client = getDeliveryReportsSMSRestClient();
-        final SMSReportResponse response = client.execute(null, message.getExternalId(), 10);
-        if (!CollectionUtils.isEmpty(response.getResults())) {
-            final SMSReport report = response.getResults().get(0);
-            message.setDeliveryStatus(InfoBipStatus.smsStatus(report.getStatus().getGroupId()).getValue());
-            logger.debug("InfoBipMessageProvider.getDeliveryReport():" + InfoBipStatus.smsStatus(report.getStatus().getGroupId()).getValue());
-        }
-        return message;
+    public SMSLogsResponse getDeliveryReport(final Set<String> messageIds) {
+        // Based on message id, we get notification from Infobip about message
+        // status
+        final GetSentSmsLogs client = getDeliveryReportsSMSRestClient();
+        return client.execute(null, null, null, messageIds.toArray(new String[0]), null, null, null, null, null, null);
     }
 
     private SendMultipleTextualSmsAdvanced getSendSMSRestClient() {
@@ -126,9 +121,9 @@ public class InfoBipMessageProvider {
         return Base64.getEncoder().encodeToString(userPass.getBytes());
     }
 
-    private GetSentSmsDeliveryReports getDeliveryReportsSMSRestClient() {
+    private GetSentSmsLogs getDeliveryReportsSMSRestClient() {
         final String authorizationKey = encodeBase64();
-        GetSentSmsDeliveryReports client = this.receiveSMSClients.get(authorizationKey);
+        GetSentSmsLogs client = this.receiveSMSClients.get(authorizationKey);
         if (client == null) {
             client = createDeliveryReportsSMSClient();
             this.receiveSMSClients.put(authorizationKey, client);
@@ -136,11 +131,11 @@ public class InfoBipMessageProvider {
         return client;
     }
 
-    private GetSentSmsDeliveryReports createDeliveryReportsSMSClient() {
+    private GetSentSmsLogs createDeliveryReportsSMSClient() {
         logger.debug("Creating a new InfoBip Client ....");
         final String userName = this.smsGatewayConfiguration.getSystemId();
         final String password = this.smsGatewayConfiguration.getPassword();
-        final GetSentSmsDeliveryReports client = new GetSentSmsDeliveryReports(new BasicAuthConfiguration(userName, password));
+        final GetSentSmsLogs client = new GetSentSmsLogs(new BasicAuthConfiguration(userName, password));
         return client;
     }
 }
