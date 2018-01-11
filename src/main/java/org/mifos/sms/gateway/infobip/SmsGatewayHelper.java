@@ -329,7 +329,9 @@ public class SmsGatewayHelper {
      * @return None
      **/
     public final void unbindAndCloseSession() {
-    	session.unbindAndClose();
+        if(session!=null) {
+            session.unbindAndClose();
+        }
     }
     
     /** 

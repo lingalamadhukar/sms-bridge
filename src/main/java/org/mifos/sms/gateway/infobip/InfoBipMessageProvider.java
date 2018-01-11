@@ -73,6 +73,7 @@ public class InfoBipMessageProvider {
         logger.info("Sending SMS to " + mobile + " ...");
         destination.setTo(mobile);
         final Message infoBipMessage = new Message();
+        infoBipMessage.setFrom(message.getSourceAddress());
         infoBipMessage.setDestinations(Collections.singletonList(destination));
         infoBipMessage.setText(message.getMessage());
         infoBipMessage.setNotifyUrl(statusCallback);
