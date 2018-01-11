@@ -1,12 +1,15 @@
 package org.mifos.sms.scheduler;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.mifos.sms.domain.SmsMessageStatusType;
 import org.mifos.sms.domain.SmsOutboundMessage;
 import org.mifos.sms.domain.SmsOutboundMessageRepository;
 import org.mifos.sms.gateway.infobip.InfoBipMessageProvider;
+import org.mifos.sms.gateway.infobip.InfoBipStatus;
 import org.mifos.sms.gateway.infobip.SmsGatewayHelper;
 import org.mifos.sms.gateway.infobip.SmsGatewayImpl;
 import org.mifos.sms.gateway.infobip.SmsGatewayMessage;
@@ -18,6 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+
+import infobip.api.model.sms.mt.logs.SMSLog;
+import infobip.api.model.sms.mt.logs.SMSLogsResponse;
 
 @Service
 public class SmsOutboundMessageScheduledJobServiceImpl implements SmsOutboundMessageScheduledJobService {
@@ -88,7 +94,7 @@ public class SmsOutboundMessageScheduledJobServiceImpl implements SmsOutboundMes
             }
             /*
              * }
-             * 
+             *
              * else { // reconnect smsGatewayHelper.reconnectAndBindSession(); }
              */
         }
@@ -105,7 +111,7 @@ public class SmsOutboundMessageScheduledJobServiceImpl implements SmsOutboundMes
 
     @Override
     @Transactional
-    @Scheduled(fixedDelay = 600000)
+    @Scheduled(fixedDelay = 1800000)
     public void updateDeliveryStatus() {
         // check if the scheduler is enabled
         if (this.smsGatewayHelper.smsGatewayConfiguration.getEnableOutboundMessageScheduler()) {
@@ -118,19 +124,16 @@ public class SmsOutboundMessageScheduledJobServiceImpl implements SmsOutboundMes
 
             // only proceed if there are pending messages for status update
             if (!CollectionUtils.isEmpty(smsOutboundMessages)) {
-
+                final Map<String, SmsOutboundMessage> messages = new HashMap<>();
                 for (final SmsOutboundMessage smsOutboundMessage : smsOutboundMessages) {
-                    SmsGatewayMessage smsGatewayMessage = new SmsGatewayMessage(smsOutboundMessage.getId(),
-                            smsOutboundMessage.getExternalId(), smsOutboundMessage.getSourceAddress(), smsOutboundMessage.getMobileNumber(),
-                            smsOutboundMessage.getMessage());
-
-                    smsGatewayMessage = this.infoBipMessageProvider.getDeliveryReport(smsGatewayMessage);
-
-                    if (!StringUtils.isEmpty(smsGatewayMessage.getDeliveryStatus())) {
-                        smsOutboundMessage.setDeliveryStatus(SmsMessageStatusType.fromInt(smsGatewayMessage.getDeliveryStatus()));
-                        this.smsOutboundMessageRepository.save(smsOutboundMessage);
-                    }
+                    messages.put(smsOutboundMessage.getExternalId(), smsOutboundMessage);
                 }
+                final SMSLogsResponse response = this.infoBipMessageProvider.getDeliveryReport(messages.keySet());
+                for (final SMSLog smsLog : response.getResults()) {
+                    final SmsOutboundMessage message = messages.get(smsLog.getMessageId());
+                    message.setDeliveryStatus(InfoBipStatus.smsStatus(smsLog.getStatus().getGroupId()));
+                }
+                this.smsOutboundMessageRepository.save(smsOutboundMessages);
             }
         }
     }
